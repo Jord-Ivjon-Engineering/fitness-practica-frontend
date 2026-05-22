@@ -1,0 +1,995 @@
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Loader2, Video, Info } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { trainingProgramApi, checkoutApi, TrainingProgram } from "@/services/api";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
+// Import images from assets
+import heroImage from "@/assets/gym-hero.jpg";
+// import aboutImage from "@/assets/gym-about.jpg";
+import planWeightLoss from "@/assets/plan-weight-loss.jpg";
+import planMuscleGrow from "@/assets/plan-muscle-grow.jpg";
+import planCardio from "@/assets/plan-cardio.jpg";
+import planFlexibility from "@/assets/plan-flexibility.jpg";
+import planFunctional from "@/assets/plan-functional.jpg";
+import heroVideo from "@/assets/viedo.mp4";
+const Index = () => {
+    // Client comments for the new section (12 total)
+    const clientComments = [
+      "Sot mbarova javën e parë të programit dhe ndihem e jashtëzakonshme! Kam humbur disa centimetra në bel dhe kofshë, dhe energjia ime është rritur dukshëm. Falenderoj trajnerët për motivimin dhe mbështetjen 🥰",
+      "Programi është fantastik! Ushtrimet nga shtëpia janë të qarta dhe të efektshme, dhe këshillat ushqimore kanë bërë diferencën. Ndihem më e fortë dhe më energjike çdo ditë 😍",
+      "Kam përfunduar javën e katërt dhe ndryshimi është i dukshëm. Belin e kam ngushtuar dukshëm dhe muskujt janë më të tonifikuar. Ndjej kënaqësi çdo herë që përfundoj stërvitjen.",
+      "Sot mbarova programin 1 dhe ndihem shumë e lumtur! Pesha ime ka rënë dhe shoh rezultate goxha të mira. Por më shumë se kaq, kam fituar besim në vetvete. Faleminderit për trajnerët fantastikë dhe për gjithë mbështetjen 🥰",
+      "Fillova programin pa shumë pritshmëri, por tani nuk e besoj ndryshimin. Trupi im është më i fortë, më i tonifikuar dhe ndihem më energjik gjatë gjithë ditës. Ushtrimet nga shtëpia janë praktike dhe efektive, ndërsa këshillat ushqimore kanë bërë diferencën.",
+      "Sot përfundova javën e gjashtë dhe ndihem e transformuar! Kam humbur centimetra dhe kilogramë, por më e rëndësishme është besimi që kam fituar. Çdo ushtrim më bën të ndihem më e fortë dhe më e motivuar. Trajnerët janë gjithmonë aty për t’u kujdesur që çdo lëvizje të bëhet saktë.",
+      "Kam arritur rezultate që nuk i prisja! Përveç humbjes së peshës, ndihem më energjik, më i motivuar dhe më i qetë psikologjikisht. Programi më ka ndryshuar totalisht rutinën dhe mendësinë për fitnesin.",
+      "Jam e lumtur pa masë që fillova këtë program. Ndryshimet nuk janë vetëm në trup, por edhe në mënyrën si ndihem. Jam më e qetë, më e fortë dhe më energjike gjatë gjithë ditës.",
+      "Vetëm duke ndjekur stërvitjet live dhe regjimin ushqimor kam arritur rezultate të mahnitshme. Ndihem më e fortë dhe më e motivuar për të vazhduar. Programi është perfekt për ata që nuk mund të shkojnë rregullisht në palestër.",
+      "Programi më ka ndihmuar të krijoj një rutinë të shëndetshme dhe të disiplinuar. Ushtrimet janë sfiduese, por shumë të këndshme. Çdo seancë më bën të ndihem krenare dhe të përparoj çdo ditë.",
+      "Sot mbarova 8 javët e para dhe nuk mund ta besoj ndryshimin! Kam humbur kilogramë dhe centimetra, por më e rëndësishme është energjia dhe besimi që kam fituar. Do vazhdoj pa dyshim me programin tjetër për tonifikim.",
+      "Falë këtij programi kam fituar besim, energji dhe motivim çdo ditë. Ushtrimet live nga shtëpia janë fantastike, dhe trajnerët gjithmonë të ndihmojnë. Ndihem më e lumtur dhe më e fuqishme se kurrë! 🥰"
+    ];
+
+    // State for cycling overlay window (cycle through all 12 comments, 3 at a time)
+    const [windowIndex, setWindowIndex] = useState(0); // which label is focused (0,1,2)
+    const [startIndex, setStartIndex] = useState(0); // which comment is the first label
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setWindowIndex((prev) => {
+          if (prev === 2) {
+            // After last label, shift all labels by 1 (cycle through all 12)
+            setStartIndex((s) => (s + 1) % clientComments.length);
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 8000);
+      return () => clearInterval(interval);
+    }, [clientComments.length]);
+  const [videoError, setVideoError] = useState(false);
+  const [openPlan, setOpenPlan] = useState<string | null>(null);
+  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(true);
+  const [currentSubtitlePair, setCurrentSubtitlePair] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [polarEnvironment, setPolarEnvironment] = useState<'sandbox' | 'production' | null>(null);
+  const [selectedMonths, setSelectedMonths] = useState<number>(1);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Price mapping for live stream months
+  const liveStreamPrices: Record<number, number> = {
+    1: 20,
+    2: 35,
+    6: 100,
+    12: 170,
+  };
+  
+  // Polar Product ID mapping for live streams
+  const liveStreamProductIds = {
+    sandbox: {
+      1: '7a9fadf7-43ea-4141-8432-964aec8f0f9c',
+      2: 'c801b8ca-32a6-4a99-90ad-0deab9837fa8',
+      6: 'c8f17a0d-2360-47ab-846a-9cd87c608833',
+      12: 'deaf9337-3439-4782-ae7d-f091fb376693',
+    },
+    production: {
+      1: 'ec5c52ce-ddfb-4735-bbb8-4a9060a959f6',
+      2: '2d5a7c85-1eba-42f9-adc0-2227e2270d9f',
+      6: 'a2e10122-44aa-43fd-a400-3be0afde7499',
+      12: '54dd41a7-6d02-4ac0-a189-6a0415559f1f',
+    },
+  };
+  const { language, t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+
+  const videoUrl = heroVideo;
+
+  // Fetch Polar environment
+  useEffect(() => {
+    const fetchPolarEnvironment = async () => {
+      try {
+        const response = await checkoutApi.getEnvironment();
+        if (response.data.success) {
+          setPolarEnvironment(response.data.data.environment);
+        }
+      } catch (error) {
+        console.error('Error fetching Polar environment:', error);
+        // Default to production if fetch fails
+        setPolarEnvironment('production');
+      }
+    };
+
+    fetchPolarEnvironment();
+  }, []);
+
+  // Fetch training programs from database
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        setProgramsLoading(true);
+        const response = await trainingProgramApi.getAll();
+        if (response.data.success) {
+          setPrograms(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      } finally {
+        setProgramsLoading(false);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
+
+  // Handle hash navigation to scroll to specific sections
+  useEffect(() => {
+    if (location.hash) {
+      const elementId = location.hash.substring(1); // Remove the # symbol
+      setTimeout(() => {
+        const element = document.getElementById(elementId);
+        if (element) {
+          // Account for fixed header height
+          const headerOffset = 80; // Adjust based on your header height
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+          });
+        }
+      }, 300); // Give time for page to load
+    }
+  }, [location.hash]);
+
+  // Rotate subtitles every 15 seconds
+  // Structure: 0 = subtitle 1 alone, 1 = subtitles 2&3, 2 = subtitles 4&5, 3 = subtitles 6&7, 4 = subtitles 8&9
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSubtitlePair((prev) => (prev + 1) % 5); // 5 groups total (1 alone + 4 pairs)
+        setTimeout(() => {
+          setIsAnimating(false);
+        }, 50); // Small delay to ensure new content is rendered
+      }, 500); // Half of animation duration
+    }, 3000); // Rotate every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get the subtitles for the current group
+  const getSubtitlePair = () => {
+    if (currentSubtitlePair === 0) {
+      // First one appears alone
+      return [t('hero.subtitle.1')];
+    } else {
+      // Rest appear in pairs
+      const baseIndex = (currentSubtitlePair - 1) * 2 + 2; // Start from subtitle 2
+      return [
+        t(`hero.subtitle.${baseIndex}`),
+        t(`hero.subtitle.${baseIndex + 1}`)
+      ];
+    }
+  };
+
+  const planDetails: Record<string, { intervals?: string[]; ageGroups?: Array<{ ageRange: string; intervals: string[] }>; message?: string }> = {
+        Boxing: {
+          intervals: [
+            t('plan.boxing.tuesday'),
+            t('plan.boxing.thursday')
+          ]
+        },
+        Spining: {
+          intervals: [
+            t('plan.spining.monday'),
+            t('plan.spining.wednesday'),
+            t('plan.spining.friday')
+          ]
+        },
+    CrossFit: { 
+      intervals: [
+        "Monday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Tuesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Wednesday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Thursday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Friday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Saturday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM",
+        "Sunday: 10:00 AM - 11:00 AM & 17:00 PM - 18:00 PM & 20:00 PM - 21:00 PM"
+      ] 
+    },
+    Aerobics: { intervals: [
+        "Monday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Tuesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Wednesday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Thursday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Friday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Saturday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM ",
+        "Sunday: 8:00 AM - 9:00 AM & 18:00 PM - 19:00 PM "
+      ]
+    },
+    Children: { 
+      ageGroups: [
+        {
+          ageRange: "Ages 4-8",
+          intervals: [
+            "Tuesday: 17:00 PM - 18:00 PM",
+            "Thursday: 17:00 PM - 18:00 PM",
+            "Saturday: 10:00 AM - 11:00 AM",
+          ]
+        },
+        {
+          ageRange: "Ages 9-12",
+          intervals: [
+            "Tuesday: 18:00 PM - 19:00 PM",
+            "Thursday: 18:00 PM - 19:00 PM",
+            "Saturday: 11:00 AM - 12:00 AM",
+          ]
+        }
+      ]
+    },
+    Pilates: { 
+      intervals: [
+        "Monday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM",
+        "Wednesday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM",
+        "Friday: 8:30 AM - 9:30 AM & 18:00 PM - 19:00 PM"
+      ] 
+    },
+  };
+
+  // --- Carousel logic ---
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % 3);
+    }, 4000); // Changed from 3000 to 4000 ms for 4 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const uploadedImages: string[] = []; // Specify your image paths here
+  const uploadedVideos: string[] = [
+    'https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/1.mp4',
+    'https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/2.mp4',
+    'https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/3.mp4',
+  ];
+
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const [mediaType] = useState<'video'>('video'); // Only videos now
+
+  useEffect(() => {
+    if (uploadedVideos.length === 0) return;
+    let videoElement: HTMLVideoElement | null = null;
+    let timeout: NodeJS.Timeout;
+
+    const playNextVideo = () => {
+      setMediaIndex((prev) => (prev + 1) % uploadedVideos.length);
+    };
+
+    // Wait for video to end, then play next
+    const setVideoListener = () => {
+      videoElement = document.getElementById('media-gallery-video') as HTMLVideoElement;
+      if (videoElement) {
+        videoElement.onended = playNextVideo;
+      }
+    };
+
+    setVideoListener();
+
+    return () => {
+      if (videoElement) videoElement.onended = null;
+      clearTimeout(timeout);
+    };
+  }, [mediaIndex, uploadedVideos.length, uploadedVideos]);
+
+  return (
+    <div className="min-h-screen bg-background">
+
+      {/* Hero Banner */}
+      <section className="relative h-screen flex items-center justify-center overflow-hidden pt-0">
+        {/* Video Background */}
+        <div className="absolute inset-0">
+          {videoUrl && !videoError && (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover object-center"
+              onError={() => setVideoError(true)}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-[hsl(14,90%,55%,0.4)] to-[hsl(25,95%,53%,0.35)]"></div>
+        </div>
+        <div className="relative z-10 text-center px-4">
+          <h1 className="text-7xl md:text-8xl font-bold text-white mb-6 tracking-tight">
+            {t('hero.title')}
+          </h1>
+          <div className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto space-y-2 overflow-hidden min-h-[120px] md:min-h-[140px] flex flex-col justify-center">
+            {getSubtitlePair().map((subtitle, index) => (
+              <p 
+                key={`${currentSubtitlePair}-${index}`}
+                className={`transition-all duration-1000 ease-in-out transform ${
+                  isAnimating 
+                    ? 'opacity-0 -translate-y-8 scale-95' 
+                    : 'opacity-100 translate-y-0 scale-100'
+                }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                {subtitle}
+              </p>
+            ))}
+          </div>
+          <div className="flex flex-col items-center gap-4">
+            <Button 
+              size="lg" 
+              className="bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+              onClick={() => {
+                const element = document.getElementById("programs");
+                if (element) {
+                  const headerOffset = 80;
+                  const elementPosition = element.getBoundingClientRect().top;
+                  const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                  window.scrollTo({
+                    top: offsetPosition,
+                    behavior: "smooth"
+                  });
+                }
+              }}
+            >
+              {t('hero.button')}
+            </Button>
+            <Button
+              onClick={() => {
+                navigate('/about');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-2 bg-white text-[hsl(14, 100.00%, 80.20%)] hover:bg-white/90 text-lg px-8 py-6 transition-all shadow-[0_10px_40px_-10px_rgba(255,255,255,0.4)]"
+              size="lg"
+            >
+              {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
+            </Button>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
+      </section>
+
+        {/* Advertising Carousel Section */}
+      <section className="w-full flex justify-center items-center py-8 bg-white">
+        <div className="w-full max-w-4xl overflow-hidden relative rounded-2xl border-4 border-primary shadow-xl bg-white">
+          <div
+            className="flex transition-transform duration-700"
+            style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+          >
+            {/* Livestream Slide */}
+            <div
+              className="min-w-full flex flex-col items-center justify-center p-8 bg-cover bg-center"
+              style={{ backgroundImage: `url(${heroImage})` }}
+            >
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Live Stream Workouts!' : 'Transmetim Direkt!'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Join our real-time online classes from anywhere. Experience interactive training with our expert coaches—now available on Fitness Practica!'
+                  : 'Bashkohuni në klasat tona online në kohë reale nga kudo që ndodheni. Përjetoni trajnime interaktive me trajnerët tanë ekspertë — tani të disponueshme në Fitness Practica!'}
+              </p>
+            </div>
+            {/* Training Program Slide */}
+            <div
+              className="min-w-full flex flex-col items-center justify-center p-8 bg-cover bg-center"
+              style={{ backgroundImage: `url(${planWeightLoss})` }}
+            >
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Training Programs' : 'Programet e Trajnimit'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Explore our personalized training programs designed for all fitness levels. Start your journey to a healthier, stronger you!'
+                  : 'Zbuloni programet tona të personalizuara të trajnimit, të dizajnuara për të gjitha nivelet e formës fizike. Filloni udhëtimin tuaj drejt një versioni më të shëndetshëm dhe më të fortë të vetes!'}
+              </p>
+            </div>
+            {/* Upcoming Events Slide */}
+            <div className="min-w-full flex flex-col items-center justify-center p-8 bg-gradient-to-br from-red-600 via-red-400 to-yellow-200 relative overflow-hidden">
+              {/* Sparkles SVG overlay */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" fill="none">
+                <g opacity="0.3">
+                  <circle cx="100" cy="100" r="3" fill="white" />
+                  <circle cx="400" cy="120" r="2" fill="white" />
+                  <circle cx="250" cy="300" r="4" fill="white" />
+                  <circle cx="350" cy="400" r="2.5" fill="white" />
+                  <circle cx="200" cy="200" r="2" fill="white" />
+                  <circle cx="420" cy="350" r="3" fill="white" />
+                  <circle cx="80" cy="420" r="2" fill="white" />
+                  <circle cx="300" cy="80" r="2.5" fill="white" />
+                </g>
+              </svg>
+              <h3 className="text-3xl font-bold mb-2 text-white drop-shadow-lg">
+                {language === 'en' ? 'Upcoming Events' : 'Eventet e Ardhshme'}
+              </h3>
+              <p className="text-lg font-bold text-white text-center drop-shadow-lg mb-4">
+                {language === 'en'
+                  ? 'Stay tuned for exciting events. More info coming soon! 🎉'
+                  : 'Qëndroni të informuar për evente emocionuese. Më shumë informacion së shpejti! 🎉'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+              <div className="flex flex-col gap-4">
+                <img 
+                  src="https://fitnesspractica.fra1.cdn.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM%20(1).jpeg" 
+                  alt="Modern gym facility 2" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(2).jpeg" 
+                  alt="Modern gym facility 3" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM%20(1).jpeg" 
+                  alt="Modern gym facility 4" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+                <img 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.21%20AM.jpeg" 
+                  alt="Modern gym facility" 
+                  className="w-full h-64 object-cover rounded-xl border border-border"
+                />
+              </div>
+            </div>
+            <div className="space-y-6">
+              <h2 className="text-5xl font-bold text-foreground">
+                {language === 'en' ? (
+                  <>
+                    Your Fitness Transformation <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Starts Here</span>
+                    <div className="mt-6 text-lg text-muted-foreground font-normal text-left whitespace-pre-line">
+                      At Fitness Practica, fitness is not just a workout—it’s a way of life. Our mission is to empower you to become the strongest, healthiest, and most confident version of yourself—wherever you are.
+
+                      Train in our state-of-the-art facility or join us from home through live-streamed workouts, guided in real time by our expert coaches. Whether you’re starting your fitness journey or pushing toward your next breakthrough, we deliver personalized training programs, high-energy group classes, and goal-driven nutritional guidance tailored to your lifestyle.
+
+                      Our results are powered by dedication and expertise. Led by professional trainers Vullnet Manushi and Marlind Manushi, every session—both in-gym and live online—is designed to motivate, challenge, and transform. You’re not just following a workout; you’re training live with coaches who push you, correct you, and keep you accountable.
+
+                      At Fitness Practica, you’re part of a powerful community that supports you every step of the way—whether you train beside us or from your own home.
+
+                      Train anywhere. Stay connected. Transform your body and mindset.
+                      Your journey starts now. 💪🔥
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    Transformimi Yt i Fitnesit <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Fillon Këtu</span>
+                    <div className="mt-6 text-lg text-muted-foreground font-normal text-left whitespace-pre-line">
+                      Te Fitness Practica, fitnesi nuk është thjesht një stërvitje — është një mënyrë jetese. Misioni ynë është të të fuqizojmë që të bëhesh versioni më i fortë, më i shëndetshëm dhe më i sigurt i vetes, kudo që të ndodhesh.
+
+                      Stërvitu në ambientet tona moderne, të pajisura me teknologjinë më të fundit, ose bashkohu nga shtëpia përmes stërvitjeve live (transmetim të drejtpërdrejtë), të udhëhequra në kohë reale nga trajnerët tanë profesionistë. Pavarësisht nëse je në fillim të rrugëtimit tënd në fitnes apo po synon të kalosh në nivelin tjetër, ne ofrojmë programe stërvitjeje të personalizuara, klasa dinamike në grup dhe udhëzime ushqimore të orientuara drejt qëllimeve të tua.
+
+                      Rezultatet tona ndërtohen mbi përkushtim dhe ekspertizë. Të udhëhequr nga trajnerët profesionistë Vullnet Manushi dhe Marlind Manushi, çdo seancë — si në palestër ashtu edhe online live — është krijuar për të të motivuar, sfiduar dhe transformuar. Nuk po ndjek thjesht një stërvitje; po stërvitesh drejtpërdrejt me trajnerë që të korrigjojnë, të motivojnë dhe të mbajnë të përgjegjshëm.
+
+                      Te Fitness Practica, je pjesë e një komuniteti të fortë që të mbështet në çdo hap — qoftë duke u stërvitur pranë nesh apo nga komoditeti i shtëpisë tënde.
+
+                      Stërvitu kudo. Qëndro i lidhur. Transformo trupin dhe mendjen.
+                      Udhëtimi yt fillon tani. 💪🔥
+                    </div>
+                  </>
+                )}
+              </h2>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t('index.about.p1')}
+              </p>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {t('index.about.p2')}
+              </p>
+              <Button
+                onClick={() => {
+                  navigate('/about');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="mt-6 flex items-center gap-2"
+                size="lg"
+              >
+                <Info className="w-5 h-5" />
+                {language === 'en' ? 'About our trainers' : 'Rreth trajnerëve tanë'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Live Streams Section */}
+      <section id="livestreams" className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Video className="w-8 h-8 text-primary" />
+              <h2 className="text-5xl font-bold text-foreground">{t('section.livestreams.title')}</h2>
+            </div>
+            <p className="text-xl text-muted-foreground">{t('section.livestreams.subtitle')}</p>
+          </div>
+          
+          <div className="w-full max-w-5xl mx-auto">
+            <Card className="overflow-hidden border-border">
+              <div className="relative h-96">
+                <img 
+                  src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202026-01-04%20at%2012.42.22%20AM.jpeg"
+                  alt="Live Stream"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                  <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
+                    Live Training
+                  </div>
+                  <h3 className="text-4xl font-bold mb-2">Fitness Practica Live</h3>
+                  <p className="text-sm text-white/90 mb-2">Join our live training sessions and train with us in real-time from anywhere</p>
+                  
+                  {/* Month Selection */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold mb-2 text-white/90">Select Duration:</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 6, 12].map((months) => (
+                        <button
+                          key={months}
+                          onClick={() => setSelectedMonths(months)}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                            selectedMonths === months
+                              ? 'bg-white text-[hsl(14,90%,55%)]'
+                              : 'bg-white/20 text-white hover:bg-white/30'
+                          }`}
+                        >
+                          {months} {months === 1 ? 'Month' : 'Months'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <p className="text-2xl font-semibold">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'eur',
+                      }).format(liveStreamPrices[selectedMonths])}
+                    </p>
+                  </div>
+                  <Button 
+                    size="lg"
+                    className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        // Use the correct Polar Product ID based on environment and months
+                        const env = polarEnvironment === 'sandbox' ? 'sandbox' : 'production';
+                        const polarProductId = liveStreamProductIds[env][selectedMonths as keyof typeof liveStreamProductIds.sandbox];
+                        
+                        addToCart({
+                          id: `fitness-practica-live-${selectedMonths}`,
+                          name: `Fitness Practica Live (${selectedMonths} ${selectedMonths === 1 ? 'Month' : 'Months'})`,
+                          category: 'Live Training',
+                          image: '',
+                          price: liveStreamPrices[selectedMonths],
+                          currency: 'eur',
+                          polarProductId: polarProductId,
+                          months: selectedMonths,
+                        });
+                      } else {
+                        navigate('/login');
+                      }
+                    }}
+                    disabled={polarEnvironment === null}
+                  >
+                    {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Training Programs Slideshow */}
+      <section id="programs" className="py-24 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.programs.title')}</h2>
+            <p className="text-xl text-muted-foreground">{t('section.programs.subtitle')}</p>
+          </div>
+          
+          {programsLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : programs.length > 0 ? (
+            <Carousel className="w-full max-w-5xl mx-auto">
+              <CarouselContent>
+                {programs
+                  .filter((program) => program.category !== 'Live Training' && program.id !== 999)
+                  .map((program) => {
+                  // Map category to fallback images (only used if database image fails)
+                  const getFallbackImage = (category: string) => {
+                    const categoryLower = category.toLowerCase();
+                    if (categoryLower.includes('weight') || categoryLower.includes('fat') || categoryLower.includes('burn')) {
+                      return planWeightLoss;
+                    } else if (categoryLower.includes('muscle') || categoryLower.includes('strength')) {
+                      return planMuscleGrow;
+                    } else if (categoryLower.includes('cardio') || categoryLower.includes('endurance')) {
+                      return planCardio;
+                    } else if (categoryLower.includes('yoga') || categoryLower.includes('stretch') || categoryLower.includes('flexibility')) {
+                      return planFlexibility;
+                    } else if (categoryLower.includes('functional') || categoryLower.includes('athletic')) {
+                      return planFunctional;
+                    }
+                    return planWeightLoss; // default fallback
+                  };
+
+                  // Use database imageUrl if available, otherwise use fallback
+                  const fallbackImage = getFallbackImage(program.category);
+                  // Ensure price is a number (handle Decimal types from database)
+                  const originalPrice = program.price ? Number(program.price) : 0;
+                  // Apply 40% discount for program ID 10 (frontend only)
+                  const isDiscounted = program.id === 10;
+                  const programPrice = isDiscounted ? 30 : originalPrice;
+
+                  return (
+                    <CarouselItem key={program.id}>
+                      <Card className="overflow-hidden border-border min-h-[520px]">
+                        <div className="relative h-[520px]">
+                          <img 
+                            src={program.imageUrl || fallbackImage} 
+                            alt={program.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to default image if database imageUrl fails to load
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== fallbackImage) {
+                                target.src = fallbackImage;
+                              }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                          <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                            {isDiscounted && (
+                              <div className="inline-block px-4 py-1 mb-3 rounded-full bg-red-600 text-white text-sm font-bold mr-2">
+                                40% OFF
+                              </div>
+                            )}
+                            <div className="inline-block px-4 py-1 mb-3 rounded-full bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] text-sm font-semibold">
+                              {program.category}
+                            </div>
+                            <h3 className="text-4xl font-bold mb-2">{program.name}</h3>
+                            {program.description && (
+                              <p className="text-sm text-white/90 mb-2">{program.description}</p>
+                            )}
+                            {(program.startDate || program.endDate) && (
+                              <div className="text-sm text-white/80 mb-2">
+                                {program.startDate && program.endDate ? (
+                                  <p>
+                                    {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </p>
+                                ) : program.startDate ? (
+                                  <p>{t('index.starts')}: {new Date(program.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                ) : program.endDate ? (
+                                  <p>{t('index.ends')}: {new Date(program.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                ) : null}
+                              </div>
+                            )}
+                            <div className="mb-4">
+                              {isDiscounted && originalPrice > 0 && (
+                                <p className="text-sm text-white/70 line-through mb-1">
+                                  {new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: (program.currency || 'all').toUpperCase(),
+                                  }).format(originalPrice)}
+                                </p>
+                              )}
+                              <p className="text-2xl font-semibold">
+                                {programPrice > 0 ? (
+                                  new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: (program.currency || 'all').toUpperCase(),
+                                  }).format(programPrice)
+                                ) : 'Free'}
+                              </p>
+                            </div>
+                            <Button 
+                              size="lg"
+                              className="mt-4 bg-white text-[hsl(14,90%,55%)] hover:bg-white/90"
+                              onClick={() => {
+                                if (isAuthenticated) {
+                                  addToCart({
+                                    id: program.name.toLowerCase().replace(/\s+/g, '-'),
+                                    programId: program.id,
+                                    name: program.name,
+                                    category: program.category,
+                                    image: program.imageUrl || fallbackImage, // Use database imageUrl if available
+                                    price: programPrice,
+                                    currency: program.currency || 'all',
+                                  });
+                                } else {
+                                  navigate('/login');
+                                }
+                              }}
+                            >
+                              {isAuthenticated ? t('button.addToCart') : t('button.loginToPurchase')}
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="left-4" />
+              <CarouselNext className="right-4" />
+            </Carousel>
+          ) : (
+            <div className="text-center py-24">
+              <p className="text-muted-foreground text-lg">{t('index.noPrograms')}</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+        {/* Media Gallery Section */}
+      <section className="py-12 px-4 flex flex-col items-center justify-center">
+        <h2 className="text-3xl font-bold text-foreground mb-8 text-center">
+          {language === 'en' ? (
+            <>
+              Selected Moments From <span className="text-orange-500">Our Programs</span>
+            </>
+          ) : (
+            <>
+              Momente Të Përzgjedhura Nga <span className="text-orange-500">Programet Tona</span>
+            </>
+          )}
+        </h2>
+        <div className="w-[500px] h-[500px] bg-white border-4 border-primary rounded-2xl shadow-xl flex items-center justify-center overflow-hidden">
+          <video
+            id="media-gallery-video"
+            src={uploadedVideos[mediaIndex]}
+            controls={false}
+            autoPlay
+            muted
+            className="object-cover w-full h-full"
+          />
+        </div>
+      </section>
+
+
+        {/* Plans Section */}
+      <section id="plans" className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.plans.title')}</h2>
+            <p className="text-xl text-muted-foreground">{t('section.plans.subtitle')}</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            {[
+              { name: "CrossFit", icon: "💪" },
+              { name: "Aerobics", icon: "🏃" },
+              { name: "Children", icon: "👶" },
+              { name: "Boxing", icon: "🥊" },
+              { name: "Pilates", icon: "🧘" },
+              { name: "Spining", icon: "🚴‍♂️" }
+            ].map((plan) => {
+              const details = planDetails[plan.name];
+              const isOpen = openPlan === plan.name;
+              return (
+                <div key={plan.name} className="relative">
+                  <Card 
+                    className="p-6 text-center hover:shadow-xl transition-all bg-card border-border group"
+                  >
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => {
+                        if (details?.intervals || details?.ageGroups) {
+                          setOpenPlan(isOpen ? null : plan.name);
+                        }
+                      }}
+                    >
+                      <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">{plan.icon}</div>
+                      <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
+                      <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] mx-auto rounded-full mb-4"></div>
+                      
+                      {details?.message ? (
+                        <p className="text-sm text-muted-foreground mt-4">{details.message}</p>
+                      ) : (details?.intervals || details?.ageGroups) ? (
+                        <div className="mt-4">
+                          <div className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+                            {t('index.viewHours')}
+                            <svg 
+                              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </Card>
+                  
+                  {isOpen && (details?.intervals || details?.ageGroups) && (
+                    <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-card border border-border shadow-lg rounded-lg z-10">
+                      {details?.ageGroups ? (
+                        <div className="space-y-4">
+                          {details.ageGroups.map((group, groupIndex) => (
+                            <div key={groupIndex} className="space-y-2">
+                              <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
+                                {group.ageRange}
+                              </h4>
+                              {group.intervals.map((interval, index) => (
+                                <p key={index} className="text-sm text-muted-foreground text-left pl-2">
+                                  {interval}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      ) : details?.intervals ? (
+                        <div className="space-y-2">
+                          {details.intervals.map((interval, index) => {
+                            // Split by comma and render each part on its own line
+                            return interval.split(',').map((part, subIndex) => (
+                              <p key={index + '-' + subIndex} className="text-sm text-muted-foreground text-left">
+                                {part.trim()}
+                              </p>
+                            ));
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* Client Comments Section */}
+      <section className="py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-foreground mb-6">
+              {language === 'en' ? (
+                <>
+                  Comments From <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Our</span> <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Clients</span>
+                </>
+              ) : (
+                <>
+                  Përshtypjet e <span className="bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] bg-clip-text text-transparent">Klientëve Tanë</span>
+                </>
+              )}
+            </h2>
+          </div>
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-full max-w-3xl mx-auto flex gap-8 flex-col md:flex-row flex-nowrap md:overflow-visible">
+              {[0, 1, 2].map((i) => {
+                const idx = (startIndex + i) % clientComments.length;
+                const isFocused = i === windowIndex;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex-1 bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center relative transition-all duration-700 ${isFocused ? 'border-4 border-black/70' : 'border-4 border-transparent'}`}
+                    style={{
+                      opacity: 1,
+                      transform: 'scale(1.05)',
+                      transition: 'border-color 0.7s cubic-bezier(0.4,0,0.2,1)',
+                    }}
+                  >
+                    <span className="text-6xl mb-4">“</span>
+                    <p className="text-lg text-muted-foreground text-center mb-4 min-h-[80px]">
+                      {clientComments[idx]}
+                    </p>
+                    <div className="w-12 h-1 bg-gradient-to-r from-[hsl(14,90%,55%)] to-[hsl(25,95%,53%)] rounded-full mb-2"></div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+    
+      {/* Locations Section */}
+      <section className="py-24 px-4 bg-muted/30">
+
+
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl font-bold text-foreground mb-4">{t('section.locations.title')}</h2>
+            <p className="text-xl text-muted-foreground">{t('section.locations.subtitle')}</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Location 1 */}
+            <Card className="p-8 space-y-6 hover:shadow-xl transition-shadow bg-card border-border">
+              <div className="flex items-start gap-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
+                  <img 
+                    src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/WhatsApp%20Image%202025-12-10%20at%2021.30.13.jpeg" 
+                    alt="Fitness Practica Location" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">Fitness Practica</h3>
+                  <p className="text-muted-foreground">Rruga Skender Luarasi, Tiranë, Albania</p>
+                </div>
+              </div>
+              <div className="rounded-xl overflow-hidden h-64 border border-border">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2996.6400645203357!2d19.80488417643704!3d41.316693200376655!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x135030ff6f8574a1%3A0x18a1d0f2d565f9e5!2sFitness%20Practica!5e0!3m2!1sen!2s!4v1762311187205!5m2!1sen!2s"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
+            </Card>
+
+            {/* Location 2 */}
+            <Card className="p-8 space-y-6 hover:shadow-xl transition-shadow bg-card border-border">
+              <div className="flex items-start gap-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full overflow-hidden">
+                  <img 
+                    src="https://fitnesspractica.fra1.digitaloceanspaces.com/uploads/images/program_1764986739884-572851476.jpg" 
+                    alt="Fitness Practica 2 Location" 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">Fitness Practica 2</h3>
+                  <p className="text-muted-foreground">Rruga Anton Lufi, Tiranë, Albania</p>
+                </div>
+              </div>
+              <div className="rounded-xl overflow-hidden h-64 border border-border">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2996.6014316063843!2d19.801920976437003!3d41.31753350032463!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x13503100686b0dad%3A0x4972b57d74017da7!2sFitness%20Practica%202!5e0!3m2!1sen!2s!4v1762311049147!5m2!1sen!2s"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+                
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Index;
+

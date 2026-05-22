@@ -1,0 +1,92 @@
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px; /* Reduced from 12px 20px */
+  background: #252525;
+  border-bottom: 1px solid #333;
+}
+
+.toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Reduced from 8px */
+}
+
+.toolbar-btn {
+  background: #333;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 6px 10px; /* Reduced from 8px 12px */
+  border-radius: 4px; /* Reduced from 6px */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Reduced from 6px */
+  font-size: 12px; /* Reduced from 14px */
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #fff;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn.play-btn {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  padding: 6px 12px; /* Reduced from 10px 16px */
+}
+
+.toolbar-btn.play-btn:hover {
+  background: #5568d3;
+}
+
+.toolbar-title-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+}
+
+.video-title {
+  margin: 0;
+  font-size: 16px; /* Reduced from default h2 size */
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.video-title:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.video-title-input {
+  flex: 1;
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.video-title-input:focus {
+  border-color: #667eea;
+}
+
