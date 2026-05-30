@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isMockAdminEnabled, mockAdminApi } from './mockAdminData';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -31,21 +32,7 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
-export const authApi = {
-  signup: async (data: { email: string; password: string; name: string; phone?: string }) => {
-    const response = await api.post('/auth/signup', data);
-    return response.data;
-  },
-  login: async (data: { email: string; password: string }) => {
-    const response = await api.post('/auth/login', data);
-    return response.data;
-  },
-  getCurrentUser: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
-  },
-};
+// Auth is handled locally in src/services/localAuth.ts (no backend required)
 
 // Plans API
 export interface Plan {
@@ -153,12 +140,27 @@ export interface VideoExercise {
 
 export const trainingProgramApi = {
   getAll: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/training-programs'),
-  getById: (id: number) => api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
+  getById: (id: number) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getProgramById(id)
+      : api.get<{ success: boolean; data: TrainingProgram }>(`/training-programs/${id}`),
   createPlaceholderVideo: (id: number, title?: string, exercisesData?: any) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos/placeholder`, { title, exercisesData }),
-  attachVideo: (id: number, fileUrl: string, title?: string, exercisesData?: any) => api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title, exercisesData }),
-  updateVideo: (programId: number, videoId: number, fileUrl: string, title?: string, exercisesData?: any) => api.put<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}`, { fileUrl, title, exercisesData }),
-  deleteVideo: (programId: number, videoId: number) => api.delete<{ success: boolean; message: string }>(`/training-programs/${programId}/videos/${videoId}`),
-  getVideos: (id: number) => api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
+  attachVideo: (id: number, fileUrl: string, title?: string, exercisesData?: any) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.attachVideo(id, fileUrl, title)
+      : api.post<{ success: boolean; data: any }>(`/training-programs/${id}/videos`, { fileUrl, title, exercisesData }),
+  updateVideo: (programId: number, videoId: number, fileUrl: string, title?: string, exercisesData?: any) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.updateVideo(programId, videoId, fileUrl, title)
+      : api.put<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}`, { fileUrl, title, exercisesData }),
+  deleteVideo: (programId: number, videoId: number) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.deleteVideo(programId, videoId)
+      : api.delete<{ success: boolean; message: string }>(`/training-programs/${programId}/videos/${videoId}`),
+  getVideos: (id: number) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getProgramVideos(id)
+      : api.get<{ success: boolean; data: { id: number; programId: number; url: string; title: string | null; createdAt: string }[] }>(`/training-programs/${id}/videos`),
   updateVideoProgress: (programId: number, videoId: number, watchedPercentage: number) => api.post<{ success: boolean; data: any }>(`/training-programs/${programId}/videos/${videoId}/progress`, { watchedPercentage }),
   getVideoProgress: (programId: number) => api.get<{ success: boolean; data: any[] }>(`/training-programs/${programId}/progress`),
   getVideoExercises: (videoId: number) => api.get<{ success: boolean; data: VideoExercise[] }>(`/training-programs/videos/${videoId}/exercises`),
@@ -314,15 +316,42 @@ export interface CreateProgramData {
 }
 
 export const adminApi = {
-  getAllUsers: () => api.get<{ success: boolean; data: AdminUser[] }>('/admin/users'),
-  getAllTransactions: () => api.get<{ success: boolean; data: AdminTransaction[] }>('/admin/transactions'),
-  getDashboardStats: () => api.get<{ success: boolean; data: DashboardStats }>('/admin/stats'),
-  createUser: (data: CreateUserData) => api.post<{ success: boolean; data: AdminUser }>('/admin/users', data),
-  getAllPrograms: () => api.get<{ success: boolean; data: TrainingProgram[] }>('/admin/programs'),
-  createProgram: (data: CreateProgramData) => api.post<{ success: boolean; data: TrainingProgram }>('/admin/programs', data),
-  updateProgram: (id: number, data: Partial<CreateProgramData>) => api.put<{ success: boolean; data: TrainingProgram }>(`/admin/programs/${id}`, data),
-  deleteProgram: (id: number) => api.delete<{ success: boolean; message: string }>(`/admin/programs/${id}`),
+  getAllUsers: () =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getAllUsers()
+      : api.get<{ success: boolean; data: AdminUser[] }>('/admin/users'),
+  getAllTransactions: () =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getAllTransactions()
+      : api.get<{ success: boolean; data: AdminTransaction[] }>('/admin/transactions'),
+  getDashboardStats: () =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getDashboardStats()
+      : api.get<{ success: boolean; data: DashboardStats }>('/admin/stats'),
+  createUser: (data: CreateUserData) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.createUser(data)
+      : api.post<{ success: boolean; data: AdminUser }>('/admin/users', data),
+  getAllPrograms: () =>
+    isMockAdminEnabled()
+      ? mockAdminApi.getAllPrograms()
+      : api.get<{ success: boolean; data: TrainingProgram[] }>('/admin/programs'),
+  createProgram: (data: CreateProgramData) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.createProgram(data)
+      : api.post<{ success: boolean; data: TrainingProgram }>('/admin/programs', data),
+  updateProgram: (id: number, data: Partial<CreateProgramData>) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.updateProgram(id, data)
+      : api.put<{ success: boolean; data: TrainingProgram }>(`/admin/programs/${id}`, data),
+  deleteProgram: (id: number) =>
+    isMockAdminEnabled()
+      ? mockAdminApi.deleteProgram(id)
+      : api.delete<{ success: boolean; message: string }>(`/admin/programs/${id}`),
   uploadProgramImage: (file: File) => {
+    if (isMockAdminEnabled()) {
+      return mockAdminApi.uploadProgramImage(file);
+    }
     const formData = new FormData();
     formData.append('image', file);
     return api.post<{ success: boolean; data: { imageUrl: string; filename: string } }>('/admin/programs/upload-image', formData, {

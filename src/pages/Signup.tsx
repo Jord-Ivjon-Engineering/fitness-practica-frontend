@@ -156,9 +156,14 @@ const Signup = () => {
     try {
       const fullPhoneNumber = `${countryCode}${phone.trim()}`;
       await signup(email, password, name, fullPhoneNumber);
-      navigate("/");
+      navigate("/admin/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || t('signup.failed'));
+      const message = err.message;
+      setError(
+        message?.startsWith('login.') || message?.startsWith('signup.')
+          ? t(message)
+          : message || t('signup.failed')
+      );
     } finally {
       setIsLoading(false);
     }

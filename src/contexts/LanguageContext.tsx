@@ -95,6 +95,7 @@ const translations: Record<Language, Record<string, string>> = {
     'login.noAccount': "Don't have an account?",
     'login.signUp': 'Sign up',
     'login.failed': 'Login failed. Please try again.',
+    'login.invalidCredentials': 'Invalid email or password.',
     
     // Signup
     'signup.title': 'Create Account',
@@ -117,6 +118,7 @@ const translations: Record<Language, Record<string, string>> = {
     'signup.passwordTooShort': 'Password must be at least 6 characters',
     'signup.phoneRequired': 'Phone number is required',
     'signup.failed': 'Signup failed. Please try again.',
+    'signup.emailExists': 'Email already registered.',
     
     // Profile
     'profile.title': 'My Profile',
@@ -461,6 +463,7 @@ const translations: Record<Language, Record<string, string>> = {
     'login.noAccount': 'Nuk keni llogari?',
     'login.signUp': 'Regjistrohu',
     'login.failed': 'Hyrja dështoi. Ju lutemi provoni përsëri.',
+    'login.invalidCredentials': 'Email ose fjalëkalim i pavlefshëm.',
     
     // Signup
     'signup.title': 'Krijo Llogari',
@@ -483,6 +486,7 @@ const translations: Record<Language, Record<string, string>> = {
     'signup.passwordTooShort': 'Fjalëkalimi duhet të jetë të paktën 6 karaktere',
     'signup.phoneRequired': 'Numri i telefonit është i detyrueshëm',
     'signup.failed': 'Regjistrimi dështoi. Ju lutemi provoni përsëri.',
+    'signup.emailExists': 'Email-i është regjistruar tashmë.',
     
     // Profile
     'profile.title': 'Profili Im',

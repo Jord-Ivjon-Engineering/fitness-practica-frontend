@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi } from '@/services/api';
+import { loginLocal, signupLocal, normalizeSessionUser, SessionUser } from '@/services/localAuth';
 
 interface User {
   id: number;
@@ -38,75 +38,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored token on mount
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
-      // Set token and user immediately from storage so isAuthenticated is true during validation
-      setToken(storedToken);
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        // Invalid stored user data, clear it
+        const parsedUser = normalizeSessionUser(JSON.parse(storedUser) as SessionUser);
+        setToken(storedToken);
+        setUser(parsedUser);
+        localStorage.setItem('user', JSON.stringify(parsedUser));
+      } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
-        setIsLoading(false);
-        return;
       }
-      
-      // Verify token is still valid
-      authApi.getCurrentUser()
-        .then((response) => {
-          if (response.success) {
-            setUser(response.data);
-            localStorage.setItem('user', JSON.stringify(response.data));
-          } else {
-            // Token invalid, clear storage
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setToken(null);
-            setUser(null);
-          }
-        })
-        .catch((error) => {
-          // Token invalid or expired, clear storage
-          // Don't redirect here - let the pages handle it after isLoading is false
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await authApi.login({ email, password });
-    if (response.success) {
-      setToken(response.data.token);
-      setUser(response.data.user);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-    } else {
-      throw new Error(response.error?.message || 'Login failed');
-    }
+    const { token: newToken, user: newUser } = loginLocal(email, password);
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const signup = async (email: string, password: string, name: string, phone?: string) => {
-    const response = await authApi.signup({ email, password, name, phone });
-    if (response.success) {
-      setToken(response.data.token);
-      setUser(response.data.user);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-    } else {
-      throw new Error(response.error?.message || 'Signup failed');
-    }
+    const { token: newToken, user: newUser } = signupLocal(email, password, name, phone);
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const logout = () => {
@@ -132,4 +95,3 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     </AuthContext.Provider>
   );
 };
-

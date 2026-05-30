@@ -27,15 +27,10 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
-      if (user.role === 'super_admin') {
-        navigate('/super-admin/dashboard');
-      } else if (user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/');
-      }
+      const returnUrl = searchParams.get('returnUrl');
+      navigate(returnUrl || '/admin/dashboard');
     }
-  }, [isAuthenticated, user, authLoading, navigate]);
+  }, [isAuthenticated, user, authLoading, navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,32 +43,14 @@ const Login = () => {
       const returnUrl = searchParams.get('returnUrl');
       
       // If returnUrl is provided, use it (e.g., for checkout redirects)
-      if (returnUrl) {
-        navigate(returnUrl);
-      } else {
-        // Check if user is admin or super_admin and redirect to appropriate dashboard
-        // The login function sets user in localStorage, so we can read it immediately
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const currentUser = JSON.parse(storedUser);
-            if (currentUser && currentUser.role === 'super_admin') {
-              navigate('/super-admin/dashboard');
-            } else if (currentUser && currentUser.role === 'admin') {
-              navigate('/admin/dashboard');
-            } else {
-              navigate('/');
-            }
-          } catch {
-            // If parsing fails, just go to home
-            navigate('/');
-          }
-        } else {
-          navigate('/');
-        }
-      }
+      navigate(returnUrl || '/admin/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || t('login.failed'));
+      const message = err.message;
+      setError(
+        message?.startsWith('login.') || message?.startsWith('signup.')
+          ? t(message)
+          : message || t('login.failed')
+      );
     } finally {
       setIsLoading(false);
     }
